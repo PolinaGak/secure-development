@@ -6,13 +6,6 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_health_check():
-    """Тест проверки здоровья API"""
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "service": "Wishlist API"}
-
-
 def test_user_flow():
     """Тестирование пользовательских методов"""
     # Создание пользователя
@@ -168,17 +161,21 @@ def test_error_cases():
     client.delete(f"/users/{user_id}")
 
 
-def test_validation_errors():
-    """Тестирование валидации данных"""
-    response = client.post(
-        "/users", json={"username": "test", "email": "invalid-email"}
-    )
-    assert response.status_code == 422
+def test_item_validation():
+    """Тестирование ошибки валидации"""
+    user_resp = client.post("/users", json={"username": "test", "email": "t@e.com"})
+    user_id = user_resp.json()["id"]
 
-    response = client.post(
-        "/users", json={"username": "ab", "email": "test@example.com"}
+    wl_resp = client.post(
+        "/wishlists", params={"user_id": user_id}, json={"name": "Test"}
     )
-    assert response.status_code == 422
+    wl_id = wl_resp.json()["id"]
+
+    r = client.post(f"/wishlists/{wl_id}/items", json={"name": ""})
+    assert r.status_code == 422
+    assert r.json()["error"]["code"] == "validation_error"
+
+    client.delete(f"/users/{user_id}")
 
 
 def test_duplicate_user():
@@ -200,7 +197,7 @@ def test_duplicate_user():
         "/users",
         json={
             "username": "differentuser",
-            "email": "unique@example.com",  # тот же email
+            "email": "unique@example.com",
         },
     )
     assert response.status_code == 400

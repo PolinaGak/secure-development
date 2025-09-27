@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, constr
 
@@ -66,9 +67,17 @@ async def api_error_handler(request: Request, exc: ApiError):
     )
 
 
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=404,
+        content={"error": {"code": "not_found", "message": "Ресурс не найден"}},
+    )
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "Wishlist API"}
+    return {"status": "ok"}
 
 
 @app.get("/wishlists/{wishlist_id}/items", response_model=List[WishItemResponse])
@@ -333,3 +342,11 @@ def delete_user(user_id: int):
     return {
         "message": f"Пользователь '{deleted_user['username']}' и все его вишлисты удалены"
     }
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"error": {"code": "validation_error", "message": "Ошибка валидации"}},
+    )
