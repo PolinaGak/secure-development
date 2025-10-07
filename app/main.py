@@ -6,9 +6,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr, constr
 
+from app.auth import auth_router
+from app.database import _DB
+from app.exceptions import InvalidCredentials
+
 app = FastAPI(
     title="Wishlist API", description="API для управления вишлистами", version="1.0.0"
 )
+app.include_router(auth_router)
 
 
 class WishItemCreate(BaseModel):
@@ -41,15 +46,6 @@ class WishlistCreate(BaseModel):
     name: constr(min_length=1, max_length=100)
     description: Optional[str] = None
     is_public: bool = True
-
-
-_DB = {
-    "users": {},
-    "wishlists": {},
-    "next_user_id": 1,
-    "next_wishlist_id": 1,
-    "next_item_id": 1,
-}
 
 
 class ApiError(Exception):
@@ -350,3 +346,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         status_code=422,
         content={"error": {"code": "validation_error", "message": "Ошибка валидации"}},
     )
+
+
+@app.exception_handler(InvalidCredentials)
+async def handle_invalid_credentials(request: Request, exc: InvalidCredentials):
+    return JSONResponse(status_code=401, content={"error": "invalid_credentials"})
