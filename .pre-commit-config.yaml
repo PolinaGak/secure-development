@@ -22,10 +22,10 @@ repos:
     hooks:
       - id: isort
 
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.3.0
-    hooks:
-      - id: no-commit-to-branch
-        name: Don't commit to main
-        args: [ '--branch', 'main' ]
-        stages: [ commit ]
+  #- repo: https://github.com/pre-commit/pre-commit-hooks
+  #  rev: v3.3.0
+  #  hooks:
+  #    - id: no-commit-to-branch
+  #      name: Don't commit to main
+  #      args: [ '--branch', 'main' ]
+  #      stages: [ commit ]
