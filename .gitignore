@@ -14,3 +14,14 @@ build/
 .idea/
 # OS
 .DS_Store
+
+.ai/
+*.log
+
+# AI-generated and temporary data
+.ai/Database/
+.ai/.vulnerable_packages.txt
+git add .gitignore.ai/Database/versions.json
+.ai/Logs/
+.ai/Temp/
+.ai/config.properties

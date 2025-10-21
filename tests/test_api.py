@@ -9,9 +9,7 @@ client = TestClient(app)
 def test_user_flow():
     """Тестирование пользовательских методов"""
     # Создание пользователя
-    response = client.post(
-        "/users", json={"username": "testuser", "email": "testuser@example.com"}
-    )
+    response = client.post("/users", json={"username": "testuser", "email": "testuser@example.com"})
     assert response.status_code == 200
     user_data = response.json()
     user_id = user_data["id"]
@@ -28,9 +26,9 @@ def test_user_flow():
             "is_public": True,
         },
     )
-    assert (
-        response.status_code == 200
-    ), f"Expected 200, got {response.status_code}. Response: {response.text}"
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}. Response: {response.text}"
+    )
     wishlist_data = response.json()
     wishlist_id = wishlist_data["id"]
     assert "id" in wishlist_data
@@ -152,9 +150,7 @@ def test_error_cases():
     response = client.post("/wishlists/999/items", json={"name": "Тестовый предмет"})
     assert response.status_code == 404
 
-    response = client.put(
-        "/wishlists/1/items/999/reserve", json={"reserved_by": "Тест"}
-    )
+    response = client.put("/wishlists/1/items/999/reserve", json={"reserved_by": "Тест"})
     assert response.status_code == 404
 
     client.delete(f"/wishlists/{wishlist_id}")
@@ -166,9 +162,7 @@ def test_item_validation():
     user_resp = client.post("/users", json={"username": "test", "email": "t@e.com"})
     user_id = user_resp.json()["id"]
 
-    wl_resp = client.post(
-        "/wishlists", params={"user_id": user_id}, json={"name": "Test"}
-    )
+    wl_resp = client.post("/wishlists", params={"user_id": user_id}, json={"name": "Test"})
     wl_id = wl_resp.json()["id"]
 
     r = client.post(f"/wishlists/{wl_id}/items", json={"name": ""})
@@ -180,9 +174,7 @@ def test_item_validation():
 
 def test_duplicate_user():
     """Тестирование создания дубликата пользователя"""
-    response = client.post(
-        "/users", json={"username": "uniqueuser", "email": "unique@example.com"}
-    )
+    response = client.post("/users", json={"username": "uniqueuser", "email": "unique@example.com"})
     assert response.status_code == 200
     user_id = response.json()["id"]
 
@@ -217,9 +209,9 @@ def test_reservation_errors():
     wishlist_response = client.post(
         "/wishlists", params={"user_id": user_id}, json={"name": "Резервирование тест"}
     )
-    assert (
-        wishlist_response.status_code == 200
-    ), f"Expected 200, got {wishlist_response.status_code}. Response: {wishlist_response.text}"
+    assert wishlist_response.status_code == 200, (
+        f"Expected 200, got {wishlist_response.status_code}. Response: {wishlist_response.text}"
+    )
     wishlist_data = wishlist_response.json()
     wishlist_id = wishlist_data["id"]
 

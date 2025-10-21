@@ -1,8 +1,21 @@
-# Временный вариант БД
-_DB = {
-    "users": {},
-    "wishlists": {},
-    "next_user_id": 1,
-    "next_wishlist_id": 1,
-    "next_item_id": 1,
-}
+import os
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(DATABASE_URL, echo=False, future=True)
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
+
+def get_db() -> Session:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

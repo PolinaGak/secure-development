@@ -1,49 +1,35 @@
-from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
-from fastapi import APIRouter
-from pydantic import BaseModel, EmailStr, constr
-
-from app.database import _DB
+from app import crud, schemas
+from app.db import get_db
 from app.exceptions import InvalidCredentials
-from app.hashing import hash_password, verify_password
+from app.hashing import verify_password
 
 auth_router = APIRouter()
 
 
-class RegisterRequest(BaseModel):
-    username: constr(min_length=3, max_length=50)
-    email: EmailStr
-    password: constr(min_length=8)
+@auth_router.post(
+    "/auth/register",
+    response_model=schemas.UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
+    try:
+        user = crud.create_user(db, user_data)
+    except HTTPException as e:
+        raise e
+    return user
 
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-@auth_router.post("/auth/register")
-def register(data: RegisterRequest):
-    for user in _DB["users"].values():
-        if user["email"] == data.email:
-            raise InvalidCredentials()
-
-    user_id = _DB["next_user_id"]
-    _DB["next_user_id"] += 1
-
-    _DB["users"][user_id] = {
-        "id": user_id,
-        "username": data.username,
-        "email": data.email,
-        "hashed_password": hash_password(data.password),
-        "created_at": datetime.now(),
-    }
-
-    return {"id": user_id, "message": "Пользователь зарегистрирован"}
-
-
-@auth_router.post("/auth/login")
-def login(data: LoginRequest):
-    user = next((u for u in _DB["users"].values() if u["email"] == data.email), None)
-    if not user or not verify_password(data.password, user["hashed_password"]):
+@auth_router.post("/auth/login", response_model=schemas.TokenResponse)
+def login(login_data: schemas.LoginRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, login_data.email)
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise InvalidCredentials()
-    return {"token": f"fake-token-for-user-{user['id']}"}
+
+    return {
+        "access_token": f"fake-jwt-token-for-user-{user.id}",
+        "token_type": "bearer",
+        "user_id": user.id,
+    }
