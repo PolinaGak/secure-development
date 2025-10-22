@@ -1,3 +1,4 @@
+"""
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -33,3 +34,5 @@ def login(login_data: schemas.LoginRequest, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user_id": user.id,
     }
+
+"""

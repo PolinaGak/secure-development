@@ -9,8 +9,7 @@ from app import crud, schemas
 from app.auth import auth_router
 from app.db import get_db
 from app.deps import get_current_user_id, get_current_user_id_optional
-from app.exceptions import InvalidCredentials
-from app.schemas import ApiError
+from app.exceptions import ApiError, InvalidCredentials
 
 app = FastAPI(title="Wishlist API", description="API для управления вишлистами", version="1.0.0")
 

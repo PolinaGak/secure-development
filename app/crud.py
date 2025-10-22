@@ -77,7 +77,7 @@ def get_wishlist_public_or_owner(
     if wishlist.is_public:
         return wishlist
 
-    if current_user_id is None or wishlist.owner_id != current_user_id:
+    if not wishlist.is_public and (current_user_id is None or wishlist.owner_id != current_user_id):
         raise HTTPException(status_code=403, detail="Access denied")
 
     return wishlist

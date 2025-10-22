@@ -1,7 +1,55 @@
-# tests/conftest.py
-import sys
-from pathlib import Path
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-ROOT = Path(__file__).resolve().parents[1]  # корень репозитория
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+from app.db import Base, get_db
+from app.main import app
+
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@pytest.fixture(scope="session")
+def db_engine():
+    Base.metadata.create_all(bind=engine)
+    yield engine
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def db_session(db_engine):
+    connection = db_engine.connect()
+    transaction = connection.begin()
+    session = TestingSessionLocal(bind=connection)
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
+
+
+@pytest.fixture
+def client(db_session):
+    def override_get_db():
+        try:
+            yield db_session
+        finally:
+            pass
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+def get_auth_headers(client, email="test@example.com", password="password123"):
+    """Вспомогательная функция для получения заголовков авторизации."""
+    login_response = client.post("/auth/login", json={"email": email, "password": password})
+    assert login_response.status_code == 200, f"Login failed: {login_response.text}"
+    token = login_response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

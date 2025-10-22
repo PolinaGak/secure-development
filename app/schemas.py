@@ -20,12 +20,6 @@ class UserResponse(BaseModel):
         orm_mode = True
 
 
-class ApiError(BaseModel):
-    status: int
-    code: str
-    message: str
-
-
 class WishlistCreate(BaseModel):
     name: str
     description: Optional[str] = None
