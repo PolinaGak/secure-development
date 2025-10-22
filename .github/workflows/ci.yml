@@ -34,5 +34,8 @@ jobs:
       - name: Tests
         run: pytest -q
 
+      - name: Check for secrets in logs (example)
+        run: ! grep -r "password\|token" logs/ 2>/dev/null
+
       - name: Pre-commit (all files)
         run: pre-commit run --all-files

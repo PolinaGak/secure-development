@@ -139,15 +139,17 @@ def test_error_cases():
     )
     wishlist_id = wishlist_response.json()["id"]
 
+    # Пользователь не найден
     response = client.get("/users/999/wishlists")
     assert response.status_code == 404
     error_data = response.json()
-    assert error_data["error"]["code"] == "user_not_found"
+    assert error_data["detail"] == "Пользователь не найден"  # ← из ApiError
 
+    # Вишлист не найден
     response = client.get("/wishlists/999/items")
     assert response.status_code == 404
     error_data = response.json()
-    assert error_data["error"]["code"] == "wishlist_not_found"
+    assert error_data["detail"] == "Вишлист не найден"
 
     response = client.post("/wishlists/999/items", json={"name": "Тестовый предмет"})
     assert response.status_code == 404
@@ -173,9 +175,8 @@ def test_item_validation():
 
     r = client.post(f"/wishlists/{wl_id}/items", json={"name": ""})
     assert r.status_code == 422
-    assert r.json()["error"]["code"] == "validation_error"
-
-    client.delete(f"/users/{user_id}")
+    error_data = r.json()
+    assert error_data["detail"] == "Ошибка валидации входных данных"
 
 
 def test_duplicate_user():
@@ -191,18 +192,15 @@ def test_duplicate_user():
     )
     assert response.status_code == 400
     error_data = response.json()
-    assert error_data["error"]["code"] == "username_exists"
+    assert error_data["detail"] == "Имя пользователя уже занято"
 
+    # Дубль email
     response = client.post(
-        "/users",
-        json={
-            "username": "differentuser",
-            "email": "unique@example.com",
-        },
+        "/users", json={"username": "differentuser", "email": "unique@example.com"}
     )
     assert response.status_code == 400
     error_data = response.json()
-    assert error_data["error"]["code"] == "email_exists"
+    assert error_data["detail"] == "Email уже зарегистрирован"
 
     client.delete(f"/users/{user_id}")
 
@@ -217,40 +215,42 @@ def test_reservation_errors():
     wishlist_response = client.post(
         "/wishlists", params={"user_id": user_id}, json={"name": "Резервирование тест"}
     )
-    assert (
-        wishlist_response.status_code == 200
-    ), f"Expected 200, got {wishlist_response.status_code}. Response: {wishlist_response.text}"
-    wishlist_data = wishlist_response.json()
-    wishlist_id = wishlist_data["id"]
+    assert wishlist_response.status_code == 200
+    wishlist_id = wishlist_response.json()["id"]
 
     item_response = client.post(
         f"/wishlists/{wishlist_id}/items", json={"name": "Предмет для резервирования"}
     )
     assert item_response.status_code == 200
-    item_data = item_response.json()
-    item_id = item_data["id"]
+    item_id = item_response.json()["id"]
 
+    # 1. УСПЕШНАЯ резервация
     response = client.put(
         f"/wishlists/{wishlist_id}/items/{item_id}/reserve",
         json={"reserved_by": "Тестер"},
     )
     assert response.status_code == 200
 
+    # 2. ПОВТОРНАЯ резервация → ошибка
     response = client.put(
         f"/wishlists/{wishlist_id}/items/{item_id}/reserve",
         json={"reserved_by": "Другой тестер"},
     )
     assert response.status_code == 400
     error_data = response.json()
-    assert error_data["error"]["code"] == "already_reserved"
+    assert error_data["detail"] == "Элемент уже зарезервирован"
 
-    client.put(f"/wishlists/{wishlist_id}/items/{item_id}/unreserve")
+    # 3. Отмена резервации
+    response = client.put(f"/wishlists/{wishlist_id}/items/{item_id}/unreserve")
+    assert response.status_code == 200
 
+    # 4. Повторная отмена → ошибка
     response = client.put(f"/wishlists/{wishlist_id}/items/{item_id}/unreserve")
     assert response.status_code == 400
     error_data = response.json()
-    assert error_data["error"]["code"] == "not_reserved"
+    assert error_data["detail"] == "Элемент не был зарезервирован"
 
+    # Очистка
     client.delete(f"/wishlists/{wishlist_id}/items/{item_id}")
     client.delete(f"/wishlists/{wishlist_id}")
     client.delete(f"/users/{user_id}")
@@ -261,7 +261,7 @@ def test_get_nonexistent_item():
     response = client.get("/wishlist/999")
     assert response.status_code == 404
     error_data = response.json()
-    assert error_data["error"]["code"] == "not_found"
+    assert error_data["detail"] == "Элемент не найден"
 
 
 if __name__ == "__main__":
