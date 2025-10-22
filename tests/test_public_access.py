@@ -30,4 +30,4 @@ def test_cannot_view_private_wishlist_without_auth(client):
 
     response = client.get(f"/wishlists/{wishlist_id}")
     assert response.status_code == 403
-    """
+"""

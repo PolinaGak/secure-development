@@ -48,9 +48,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 
 @app.delete("/users/me", response_model=schemas.DeleteResponse)
-def delete_own_user(
-    current_user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)
-):
+def delete_own_user(current_user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return crud.delete_user(db, current_user_id)
 
 
@@ -64,9 +62,7 @@ def create_wishlist(
 
 
 @app.get("/wishlists/mine", response_model=List[schemas.WishlistSummary])
-def get_my_wishlists(
-    current_user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)
-):
+def get_my_wishlists(current_user_id: int = Depends(get_current_user_id), db: Session = Depends(get_db)):
     return crud.get_user_wishlists(db, current_user_id)
 
 

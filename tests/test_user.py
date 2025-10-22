@@ -12,4 +12,4 @@ def test_delete_own_user(client):
     response = client.delete("/users/me", headers=headers)
     assert response.status_code == 200
     assert response.json()["detail"] == "User deleted
-    """
+"""

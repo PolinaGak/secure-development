@@ -21,13 +21,9 @@ def get_user_by_id(db: Session, user_id: int) -> models.User | None:
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     if get_user_by_email(db, user.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     if db.query(models.User).filter(models.User.username == user.username).first():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken"
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken")
 
     db_user = models.User(
         username=user.username,
@@ -83,9 +79,7 @@ def get_wishlist_public_or_owner(
     return wishlist
 
 
-def create_wishlist(
-    db: Session, wishlist: schemas.WishlistCreate, owner_id: int
-) -> models.Wishlist:
+def create_wishlist(db: Session, wishlist: schemas.WishlistCreate, owner_id: int) -> models.Wishlist:
     user = get_user_by_id(db, owner_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -131,9 +125,7 @@ def get_items_from_wishlist(db: Session, wishlist_id: int) -> list[models.WishIt
     return wishlist.items
 
 
-def add_item_to_wishlist(
-    db: Session, wishlist_id: int, item: schemas.WishItemCreate
-) -> models.WishItem:
+def add_item_to_wishlist(db: Session, wishlist_id: int, item: schemas.WishItemCreate) -> models.WishItem:
     wishlist = get_wishlist_by_id(db, wishlist_id)
     if not wishlist:
         raise HTTPException(status_code=404, detail="Wishlist not found")

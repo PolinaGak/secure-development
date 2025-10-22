@@ -5,10 +5,12 @@ from app.main import app
 
 client = TestClient(app)
 
+
 @pytest.fixture
 def create_test_user():
     # Генерируем уникальный email для каждого запуска
     import uuid
+
     unique_id = str(uuid.uuid4())[:8]
     user_data = {
         "username": f"testuser_{unique_id}",
@@ -18,6 +20,7 @@ def create_test_user():
     response = client.post("/auth/register", json=user_data)
     assert response.status_code == 201
     return user_data
+
 
 @pytest.mark.parametrize(
     "email,password",
@@ -32,13 +35,11 @@ def test_invalid_credentials_unified_response(email, password):
     assert response.status_code == 401
     assert response.json() == {"error": "invalid_credentials"}
 
+
 def test_login_with_created_user(create_test_user):
     """Тест с корректным логином"""
     user = create_test_user
-    response = client.post("/auth/login", json={
-        "email": user["email"],
-        "password": user["password"]
-    })
+    response = client.post("/auth/login", json={"email": user["email"], "password": user["password"]})
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data
