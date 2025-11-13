@@ -1,12 +1,11 @@
 import pytest
-from httpx import AsyncClient
-
+from httpx import AsyncClient, ASGITransport
 from app.main import app
-
 
 @pytest.mark.asyncio
 async def test_jwt_from_env():
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         # Регистрация
         resp = await client.post(
             "/auth/register",
