@@ -272,7 +272,6 @@ async def handle_invalid_credentials(request: Request, exc: InvalidCredentials):
     return JSONResponse(status_code=401, content={"error": "invalid_credentials"})
 
 
-
 @app.exception_handler(ProblemDetail)
 async def problem_detail_handler(request: Request, exc: ProblemDetail):
     return exc.to_response(request)
