@@ -8,12 +8,15 @@ from pydantic import BaseModel, EmailStr, constr
 
 from app.auth import auth_router
 from app.database import _DB
-from app.exceptions import InvalidCredentials
+from app.exceptions import ApiError, InvalidCredentials
+from app.middleware import CorrelationIdMiddleware
 
 app = FastAPI(
     title="Wishlist API", description="API для управления вишлистами", version="1.0.0"
 )
 app.include_router(auth_router)
+
+app.add_middleware(CorrelationIdMiddleware)
 
 
 class WishItemCreate(BaseModel):
@@ -46,29 +49,6 @@ class WishlistCreate(BaseModel):
     name: constr(min_length=1, max_length=100)
     description: Optional[str] = None
     is_public: bool = True
-
-
-class ApiError(Exception):
-    def __init__(self, code: str, message: str, status: int = 400):
-        self.code = code
-        self.message = message
-        self.status = status
-
-
-@app.exception_handler(ApiError)
-async def api_error_handler(request: Request, exc: ApiError):
-    return JSONResponse(
-        status_code=exc.status,
-        content={"error": {"code": exc.code, "message": exc.message}},
-    )
-
-
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc: HTTPException):
-    return JSONResponse(
-        status_code=404,
-        content={"error": {"code": "not_found", "message": "Ресурс не найден"}},
-    )
 
 
 @app.get("/health")
@@ -340,14 +320,57 @@ def delete_user(user_id: int):
     }
 
 
+@app.exception_handler(ApiError)
+async def api_error_handler(request: Request, exc: ApiError):
+    return JSONResponse(
+        status_code=exc.status,
+        content={
+            "type": f"https://wishlist-api.local/errors/{exc.code}",
+            "title": exc.message,
+            "status": exc.status,
+            "detail": exc.message,
+            "instance": str(request.url),
+            "correlation_id": getattr(request.state, "correlation_id", "unknown"),
+        },
+    )
+
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=404,
+        content={
+            "type": "https://wishlist-api.local/errors/not_found",
+            "title": "Ресурс не найден",
+            "status": 404,
+            "detail": "Ресурс не найден",
+            "instance": str(request.url),
+            "correlation_id": getattr(request.state, "correlation_id", "unknown"),
+        },
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"error": {"code": "validation_error", "message": "Ошибка валидации"}},
+        content={
+            "type": "https://wishlist-api.local/errors/validation_error",
+            "title": "Ошибка валидации",
+            "status": 422,
+            "detail": "Ошибка валидации входных данных",
+            "instance": str(request.url),
+            "correlation_id": getattr(request.state, "correlation_id", "unknown"),
+        },
     )
 
 
 @app.exception_handler(InvalidCredentials)
 async def handle_invalid_credentials(request: Request, exc: InvalidCredentials):
-    return JSONResponse(status_code=401, content={"error": "invalid_credentials"})
+    return JSONResponse(
+        status_code=401,
+        content={"error": "invalid_credentials"},
+        headers={
+            "X-Correlation-ID": getattr(request.state, "correlation_id", "unknown")
+        },
+    )

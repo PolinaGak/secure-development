@@ -1,4 +1,13 @@
-class InvalidCredentials(Exception):
-    """Исключение для неверных учетных данных (унифицированный ответ)"""
+from fastapi import HTTPException
 
-    pass
+
+class InvalidCredentials(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=401)
+
+
+class ApiError(Exception):
+    def __init__(self, code: str, message: str, status: int = 400):
+        self.code = code
+        self.message = message
+        self.status = status
