@@ -1,6 +1,3 @@
-.git
-.gitignore
-.gitattributes
 __pycache__/
 *.pyc
 *.pyo
@@ -15,3 +12,9 @@ build/
 htmlcov/
 node_modules/
 .env
+.git
+.gitignore
+.gitattributes
+migrations/
+tests/
+.idea
