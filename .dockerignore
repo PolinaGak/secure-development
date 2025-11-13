@@ -11,10 +11,8 @@ build/
 .coverage
 htmlcov/
 node_modules/
-.env
 .git
 .gitignore
 .gitattributes
 migrations/
-tests/
 .idea
