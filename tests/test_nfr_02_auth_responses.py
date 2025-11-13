@@ -8,24 +8,25 @@ client = TestClient(app)
 
 @pytest.fixture
 def create_test_user():
-    user_data = {
-        "username": "testuser",
-        "email": "testuser@example.com",
-        "password": "TestPassword123",
-    }
-    client.post("/auth/register", json=user_data)
-    return user_data
+    r = client.post(
+        "/users",
+        json={
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "TestPassword123",
+        },
+    )
+    return r.json()
 
 
 @pytest.mark.parametrize(
     "email,password",
     [
-        ("nonexistent@example.com", "TestPassword123"),  # nonexistent email
-        ("testuser@example.com", "WrongPassword123"),  # wrong password
+        ("nonexistent@example.com", "TestPassword123"),
+        ("test@example.com", "WrongPassword123"),
     ],
 )
 def test_invalid_credentials_unified_response(create_test_user, email, password):
-    response = client.post("/auth/login", json={"email": email, "password": password})
-
-    assert response.status_code == 401
-    assert response.json() == {"error": "invalid_credentials"}
+    r = client.post("/auth/login", data={"username": email, "password": password})
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Неверное имя пользователя или пароль"

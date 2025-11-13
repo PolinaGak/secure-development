@@ -25,6 +25,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
 
+      - name: Create .env for tests
+        run: |
+            echo "JWT_SECRET=test-secret-key-for-ci" > .env
+
       - name: Lint & Format
         run: |
           ruff check --output-format=github .

@@ -1,49 +1,114 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from typing import Dict
 
-from fastapi import APIRouter
-from pydantic import BaseModel, EmailStr, constr
+from fastapi import APIRouter, Depends
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jose import JWTError, jwt
 
+from app.config import settings
 from app.database import _DB
-from app.exceptions import InvalidCredentials
-from app.hashing import hash_password, verify_password
+from app.exceptions import ProblemDetail
+from app.models import UserCreate
 
-auth_router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
-
-class RegisterRequest(BaseModel):
-    username: constr(min_length=3, max_length=50)
-    email: EmailStr
-    password: constr(min_length=8)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+def create_access_token(data: Dict, expires_delta: timedelta | None = None) -> str:
+    """Создаёт JWT-токен с истечением срока действия"""
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=60))
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm
+    )
+    return encoded_jwt
 
 
-@auth_router.post("/auth/register")
-def register(data: RegisterRequest):
-    for user in _DB["users"].values():
-        if user["email"] == data.email:
-            raise InvalidCredentials()
+def get_current_user(token: str = Depends(oauth2_scheme)) -> int:
+    """Декодирует JWT и возвращает user_id"""
+    try:
+        payload = jwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise ProblemDetail(
+                title="Invalid Token",
+                detail="Токен не содержит идентификатор пользователя",
+                status=401,
+            )
+        return int(user_id)
+    except JWTError:
+        raise ProblemDetail(
+            title="Invalid Token",
+            detail="Недействительный или истёкший токен",
+            status=401,
+        )
 
-    user_id = _DB["next_user_id"]
+
+@router.post("/register", response_model=Dict)
+def register(user: UserCreate):
+    """Регистрация нового пользователя"""
+    # Проверка на дублирование
+    for existing in _DB["users"].values():
+        if existing["username"] == user.username:
+            raise ProblemDetail(
+                title="Username Exists",
+                detail="Имя пользователя уже занято",
+                status=400,
+            )
+        if existing["email"] == user.email:
+            raise ProblemDetail(
+                title="Email Exists", detail="Email уже зарегистрирован", status=400
+            )
+
+    new_id = _DB["next_user_id"]
+    _DB["users"][new_id] = {
+        "id": new_id,
+        "username": user.username,
+        "email": user.email,
+        "password": user.password,
+        "created_at": datetime.now(timezone.utc),
+        "wishlists": [],
+    }
     _DB["next_user_id"] += 1
 
-    _DB["users"][user_id] = {
-        "id": user_id,
-        "username": data.username,
-        "email": data.email,
-        "hashed_password": hash_password(data.password),
-        "created_at": datetime.now(),
+    return {"id": new_id, "message": "Пользователь создан"}
+
+
+@router.post("/login", response_model=Dict)
+def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """Аутентификация пользователя"""
+    user = None
+    for u in _DB["users"].values():
+        if u["username"] == form_data.username:
+            user = u
+            break
+
+    if not user or user["password"] != form_data.password:
+        raise ProblemDetail(
+            title="Invalid Credentials",
+            detail="Неверное имя пользователя или пароль",
+            status=401,
+        )
+
+    access_token = create_access_token(data={"sub": str(user["id"])})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/me", response_model=Dict)
+def get_me(current_user: int = Depends(get_current_user)):
+    """Получить данные текущего пользователя"""
+    user = _DB["users"].get(current_user)
+    if not user:
+        raise ProblemDetail(
+            title="User Not Found", detail="Пользователь не найден", status=404
+        )
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"],
+        "created_at": user["created_at"],
     }
-
-    return {"id": user_id, "message": "Пользователь зарегистрирован"}
-
-
-@auth_router.post("/auth/login")
-def login(data: LoginRequest):
-    user = next((u for u in _DB["users"].values() if u["email"] == data.email), None)
-    if not user or not verify_password(data.password, user["hashed_password"]):
-        raise InvalidCredentials()
-    return {"token": f"fake-token-for-user-{user['id']}"}
