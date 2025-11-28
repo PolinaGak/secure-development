@@ -2,10 +2,10 @@ name: S09 - SBOM & SCA
 on:
   workflow_dispatch:
   push:
-    #paths:
-    #  - '**/*.py'
-    #  - 'requirements.txt'
-    #  - '.github/workflows/ci-s09-sbom-sca.yml'
+    paths:
+      - '**/*.py'
+      - 'requirements.txt'
+      - '.github/workflows/ci-s09-sbom-sca.yml'
 jobs:
   s09:
     runs-on: ubuntu-latest
